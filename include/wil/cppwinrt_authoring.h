@@ -371,36 +371,36 @@ namespace details
     }
 }
 
-//template <typename T>
-//struct single_threaded_dependency_property
-//{
-//    using Type = T;
-//
-//    single_threaded_dependency_property(
-//        wil::details::Xaml_DependencyProperty const& dp,
-//        wil::details::Xaml_DependencyObject_GetValue const& getValue,
-//        wil::details::Xaml_DependencyObject_SetValue const& setValue) :
-//        m_dp(dp), m_getValue(getValue), m_setValue(setValue)
-//    {
-//    }
-//
-//    template <typename Q>
-//    auto& operator()(Q&& q)
-//    {
-//        return winrt::unbox_value<Type>(m_getValue(m_dp));
-//    }
-//
-//    template <typename Q>
-//    auto& operator=(Q&& q)
-//    {
-//        m_setValue(m_dp, winrt::box_value(value));
-//    }
-//
-//private:
-//    wil::details::Xaml_DependencyProperty const& m_dp{ nullptr };
-//    wil::details::Xaml_DependencyObject_GetValue m_getValue{nullptr};
-//    wil::details::Xaml_DependencyObject_SetValue m_setValue{nullptr};
-//};
+template <typename T>
+struct single_threaded_dependency_property
+{
+    using Type = T;
+
+    single_threaded_dependency_property(
+        wil::details::Xaml_DependencyProperty const& dp,
+        wil::details::Xaml_DependencyObject_GetValue const& getValue,
+        wil::details::Xaml_DependencyObject_SetValue const& setValue) :
+        m_dp(dp), m_getValue(getValue), m_setValue(setValue)
+    {
+    }
+
+    template <typename Q>
+    auto& operator()(Q&& q) const
+    {
+        return winrt::unbox_value<Type>(m_getValue(m_dp));
+    }
+
+    template <typename Q>
+    auto& operator=(Q&& q) const
+    {
+        m_setValue(m_dp, winrt::box_value(q));
+    }
+
+private:
+    wil::details::Xaml_DependencyProperty const& m_dp{ nullptr };
+    wil::details::Xaml_DependencyObject_GetValue m_getValue{nullptr};
+    wil::details::Xaml_DependencyObject_SetValue m_setValue{nullptr};
+};
 
 #define WIL_DEFINE_DP(baseClass, type, name) \
     static wil::details::Xaml_DependencyProperty name##Property() \
@@ -409,14 +409,7 @@ namespace details
             wil::details::register_dependency_property<type, baseClass>(L"" #name); \
         return s_##name##Property; \
     } \
-    auto name() const \
-    { \
-        return winrt::unbox_value<type>(GetValue(name##Property())); \
-    } \
-    void name(type value) const \
-    { \
-        SetValue(name##Property(), winrt::box_value(value)); \
-    } \
+    const auto name = single_threaded_dependency_property<type>(name##Property(), GetValue, SetValue); \
     static void Ensure##name##Property() \
     { \
         name##Property(); \
